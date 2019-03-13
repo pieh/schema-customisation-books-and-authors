@@ -11,7 +11,7 @@ exports.sourceNodes = ({ actions }) => {
     type Frontmatter {
       name: String
       title: String
-      author: MarkdownRemark
+      authors: [MarkdownRemark]
       books: [MarkdownRemark]
     }
     type MarkdownRemark implements Node {
@@ -23,24 +23,24 @@ exports.sourceNodes = ({ actions }) => {
 exports.createResolvers = ({ createResolvers }) => {
   createResolvers({
     Frontmatter: {
-      author: {
+      authors: {
         resolve: async (source, args, context) => {
           // source is frontmatter object
-          const author = source.author
+          const authors = source.authors
 
           // if author is not set - return null
-          if (!author) {
-            return null
+          if (!authors || authors.length === 0) {
+            return []
           }
 
-          // we run query looking for MarkdownRemark node with frontmatter.name set to author
-          const authorNode = await context.nodeModel.runQuery({
-            query: { filter: { frontmatter: { name: { eq: author } } } },
+          // we run query looking for MarkdownRemark node with frontmatter.name that is one of authors
+          const authorNodes = await context.nodeModel.runQuery({
+            query: { filter: { frontmatter: { name: { in: authors } } } },
             type: `MarkdownRemark`,
-            firstOnly: true,
+            firstOnly: false,
           })
 
-          return authorNode
+          return authorNodes
         },
       },
       books: {
@@ -52,12 +52,12 @@ exports.createResolvers = ({ createResolvers }) => {
             return []
           }
 
-          // we run query looking for MarkdownRemark nodes with frontmatter.author.frontmatter.name set to author
+          // we run query looking for MarkdownRemark nodes with frontmatter.authors.frontmatter.name set to author
           const bookNodes = await context.nodeModel.runQuery({
             query: {
               filter: {
                 frontmatter: {
-                  author: { frontmatter: { name: { eq: author } } },
+                  authors: { frontmatter: { name: { eq: author } } },
                 },
               },
             },
